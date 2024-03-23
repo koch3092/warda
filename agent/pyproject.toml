@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "warda-agent"
+version = "0.1.0"
+description = "A talking AI Example."
+authors = ["koch3092 <developer@dorakoch.com>"]
+license = "MIT License"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+livekit = "^0.9.1"
+livekit-agents = "^0.4.0"
+pydantic = "^2.6.4"
+camel-ai = "^0.1.1"
+pydub = "^0.25.1"
+pydantic-settings = "^2.2.1"
+livekit-plugins-openai = "^0.2.0"
+
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.13.2"
+black = "^24.3.0"
+autoflake = "^2.3.1"
+flake8 = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
