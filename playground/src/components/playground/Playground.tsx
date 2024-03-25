@@ -60,6 +60,11 @@ export interface PlaygroundProps {
   videoFit?: "contain" | "cover";
 }
 
+export interface Model {
+  name: string;
+  value: string;
+}
+
 const headerHeight = 56;
 
 export default function Playground({
@@ -80,6 +85,14 @@ export default function Playground({
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
+
+  const models: Model[] = useMemo(() => {
+    return [
+      {name: "GPT-4 (8K)", value: "gpt-4"},
+      {name: "GPT-4 Turbo (128K)", value: "gpt-4-turbo"},
+      {name: "GPT-3.5 (16K)", value: "gpt-3.5"},
+    ]
+  }, []);
 
   const participants = useRemoteParticipants({
     updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
@@ -255,6 +268,76 @@ export default function Playground({
       />
     );
   }, [messages, themeColor, sendChat]);
+
+  const modelConfigTileContent = useMemo(() => {
+    return (
+      <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
+        <ConfigurationPanelItem title="Model Configuration">
+          <div className="flex flex-col pt-2 gap-4">
+            <NameValueRow
+              name="Model"
+              value={
+                <select className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}>
+                  {models.map((model, index) => (
+                    <option className={`min-w-20 max-w-40 text-center text-gray-100 bg-black border border-gray-800`} key={index} value={model.value}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+              }
+              valueColor="gray-800"
+              valueSize="text-sm"
+            />
+            <NameValueRow
+              name="Temperature"
+              value={
+                <input
+                  className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  defaultValue="1"
+                />
+              }
+              valueColor="gray-800"
+              valueSize="text-sm"
+            />
+            <NameValueRow
+              name="Response max length"
+              value={
+                <input
+                  className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}
+                  type="number"
+                  min="1"
+                  max="4096"
+                  step="1"
+                  defaultValue="400"
+                />
+              }
+              valueColor="gray-800"
+              valueSize="text-sm"
+            />
+            <NameValueRow
+              name="Dialog round"
+              value={
+                <input
+                  className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}
+                  type="number"
+                  min="1"
+                  max="30"
+                  step="1"
+                  defaultValue="5"
+                />
+              }
+              valueColor="gray-800"
+              valueSize="text-sm"
+            />
+          </div>
+        </ConfigurationPanelItem>
+      </div>
+    );
+  }, [models, themeColor]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -444,7 +527,7 @@ export default function Playground({
       />
       <div
         className={`flex gap-4 py-4 grow w-full selection:bg-${themeColor}-900`}
-        style={{ height: `calc(100% - ${headerHeight}px)` }}
+        style={{height: `calc(100% - ${headerHeight}px)`}}
       >
         <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
           <PlaygroundTabbedTile
@@ -453,8 +536,18 @@ export default function Playground({
             initialTab={mobileTabs.length - 1}
           />
         </div>
+
+        <PlaygroundTile
+          title="Configuration"
+          padding={false}
+          className="h-full w-full basis-1/6 overflow-y-auto hidden max-w-[480px] lg:flex"
+          childrenClassName="h-full grow items-start"
+        >
+          {modelConfigTileContent}
+        </PlaygroundTile>
+
         <div
-          className={`flex-col grow basis-1/2 gap-4 h-full hidden lg:${
+          className={`flex-col grow basis-1/3 gap-4 h-full hidden lg:${
             !outputs?.includes(PlaygroundOutputs.Audio) &&
             !outputs?.includes(PlaygroundOutputs.Video)
               ? "hidden"
@@ -481,18 +574,49 @@ export default function Playground({
           )}
         </div>
 
-        {outputs?.includes(PlaygroundOutputs.Chat) && (
-          <PlaygroundTile
-            title="Chat"
-            className="h-full grow basis-1/4 hidden lg:flex"
-          >
-            {chatTileContent}
-          </PlaygroundTile>
-        )}
+        <div
+          className={`flex-col grow basis-1/3 gap-2 h-full hidden lg:${
+            !outputs?.includes(PlaygroundOutputs.Audio) &&
+            !outputs?.includes(PlaygroundOutputs.Video) &&
+            !outputs?.includes(PlaygroundOutputs.Chat)
+              ? "hidden"
+              : "flex"
+          }`}
+        >
+          {outputs?.includes(PlaygroundOutputs.Video) && (
+            <PlaygroundTile
+              title="Video"
+              className="w-full grow min-h-80"
+              childrenClassName="justify-center"
+            >
+              {videoTileContent}
+            </PlaygroundTile>
+          )}
+
+          {outputs?.includes(PlaygroundOutputs.Audio) && (
+            <PlaygroundTile
+              title="Audio"
+              className="w-full grow min-h-40"
+              childrenClassName="justify-center"
+            >
+              {audioTileContent}
+            </PlaygroundTile>
+          )}
+
+          {outputs?.includes(PlaygroundOutputs.Chat) && (
+            <PlaygroundTile
+              title="Chat"
+              className="w-full h-full grow"
+            >
+              {chatTileContent}
+            </PlaygroundTile>
+          )}
+        </div>
+
         <PlaygroundTile
           padding={false}
           backgroundColor="gray-950"
-          className="h-full w-full basis-1/4 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
+          className="h-full w-full basis-1/6 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
           childrenClassName="h-full grow items-start"
         >
           {settingsTileContent}
