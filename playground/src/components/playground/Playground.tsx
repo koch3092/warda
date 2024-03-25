@@ -34,6 +34,7 @@ import {
 } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import {PromptTile} from "@/components/prompt/PromptTile";
 
 export enum PlaygroundOutputs {
   Video,
@@ -85,6 +86,7 @@ export default function Playground({
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
+  const [prompt, setPrompt] = useState<string>("");
 
   const models: Model[] = useMemo(() => {
     return [
@@ -268,6 +270,15 @@ export default function Playground({
       />
     );
   }, [messages, themeColor, sendChat]);
+
+  const promptTileContent = useMemo(() => {
+    return (
+      <PromptTile
+        prompt={prompt}
+        accentColor={themeColor}
+      />
+    );
+  }, [prompt, themeColor]);
 
   const modelConfigTileContent = useMemo(() => {
     return (
@@ -546,32 +557,14 @@ export default function Playground({
           {modelConfigTileContent}
         </PlaygroundTile>
 
-        <div
-          className={`flex-col grow basis-1/3 gap-4 h-full hidden lg:${
-            !outputs?.includes(PlaygroundOutputs.Audio) &&
-            !outputs?.includes(PlaygroundOutputs.Video)
-              ? "hidden"
-              : "flex"
-          }`}
-        >
-          {outputs?.includes(PlaygroundOutputs.Video) && (
-            <PlaygroundTile
-              title="Video"
-              className="w-full h-full grow"
-              childrenClassName="justify-center"
-            >
-              {videoTileContent}
-            </PlaygroundTile>
-          )}
-          {outputs?.includes(PlaygroundOutputs.Audio) && (
-            <PlaygroundTile
-              title="Audio"
-              className="w-full h-full grow"
-              childrenClassName="justify-center"
-            >
-              {audioTileContent}
-            </PlaygroundTile>
-          )}
+        <div className="flex-col grow basis-1/3 gap-2 h-full hidden lg:flex">
+          <PlaygroundTile
+            title="Profile & Prompt"
+            className="w-full h-full grow"
+            childrenClassName="justify-center"
+          >
+            {promptTileContent}
+          </PlaygroundTile>
         </div>
 
         <div
