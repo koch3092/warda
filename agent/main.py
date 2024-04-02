@@ -10,6 +10,11 @@ from livekit import rtc, agents
 from config import settings
 from plugins.camel import SimpleAgent
 from plugins.openai import TTS
+from plugins.postgrest import postgrest_client
+from services import AgentService
+from services.agent_config.database import get_agent_config
+from services.agent_config.model import AgentConfigTable, AgentConfigPayload
+from services.service import ServiceManager
 
 PROMPT = "You are a helpful assistant.Your name is Warda."
 
@@ -33,7 +38,8 @@ class WardaAgent:
 
         self.ctx = ctx
         self.chat = rtc.ChatManager(ctx.room)
-        self.chat_agent = SimpleAgent(prompt_content=PROMPT)
+        self.chat_agent = SimpleAgent(system_message=PROMPT)
+        self.service = ServiceManager(ctx, ctx.room, self.chat_agent)
         self.prompt: Optional[str] = None
         self.line_out: Optional[rtc.AudioSource] = None
 
@@ -47,6 +53,16 @@ class WardaAgent:
         # give a bit of time for the user to fully connect, so they don't miss
         # the welcome message
         await asyncio.sleep(1)
+
+        # confirm database connection
+        agent_config_payload: AgentConfigPayload = await get_agent_config(agent_name=settings.AGENT_NAME)
+        if not agent_config_payload:
+            raise Exception(f"Agent config not found for agent {settings.AGENT_NAME}")
+        else:
+            self.chat_agent.init_agent(agent_config_payload.system_message)
+
+        agent_config_service: AgentService = self.service.fetch_service("agent-config-topic")
+        await agent_config_service.send_agent_config()
 
         self.ctx.create_task(self.chat_publish_worker())
         await self.publish_audio()
@@ -74,8 +90,9 @@ class WardaAgent:
 
     async def chat_publish_worker(self):
         while True:
-            prompt, self.prompt = self.prompt, None
-            if prompt:
+            if self.prompt:
+                prompt, self.prompt = self.prompt, None
+
                 self.update_agent_state(AgentState.THINKING.value)
                 content = self.chat_agent.step(prompt)
 
@@ -99,8 +116,8 @@ if __name__ == "__main__":
     async def job_request_cb(job_request: agents.JobRequest):
         await job_request.accept(
             WardaAgent.create,
-            identity="warda_agent",
-            name="Warda",
+            identity=settings.AGENT_ID,
+            name=settings.AGENT_NAME,
             # disconnect when the last participant leaves
             auto_disconnect=agents.AutoDisconnect.DEFAULT,
         )

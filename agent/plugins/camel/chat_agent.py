@@ -5,12 +5,18 @@ from camel.types import TaskType
 
 
 class SimpleAgent:
-    def __init__(self, key: str = 'generate_users', num_roles: int = 50, prompt_content: str = "", model=None):
+    def __init__(self, key: str = 'generate_users', num_roles: int = 50, model=None, system_message: str = ""):
         prompt_template = PromptTemplateGenerator().get_prompt_from_key(TaskType.AI_SOCIETY, key)
-        assistant_sys_msg = BaseMessage.make_assistant_message(role_name="Assistant", content=prompt_content)
-
         self.prompt = prompt_template.format(num_roles=num_roles)
-        self.agent = ChatAgent(assistant_sys_msg, model_type=model)
+
+        self.model = model
+        self.agent = None
+
+        self.init_agent(system_message)
+
+    def init_agent(self, system_message: str):
+        assistant_sys_msg = BaseMessage.make_assistant_message(role_name="Assistant", content=system_message)
+        self.agent = ChatAgent(assistant_sys_msg, model_type=self.model)
         self.agent.reset()
 
     def step(self, content: str) -> str:
