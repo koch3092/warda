@@ -34,7 +34,9 @@ import {
 } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import {PromptTile} from "@/components/prompt/PromptTile";
+import {SystemMessageTile} from "@/components/systemMessage/SystemMessageTile";
+import {AgentBaseInfo, AgentConfig, AgentProfileConfig, ModelConfig, useAgentConfig} from "@/hooks/useAgentConfig";
+import {AgentConfigTile} from "@/components/agentConfig/agentConfigTile";
 
 export enum PlaygroundOutputs {
   Video,
@@ -61,12 +63,31 @@ export interface PlaygroundProps {
   videoFit?: "contain" | "cover";
 }
 
-export interface Model {
-  name: string;
-  value: string;
+const headerHeight = 56;
+
+const defaultModelConfig: ModelConfig = {
+  modelType: "gpt-4-turbo",
+  dialogRound: 5,
+  temperature: 0.8,
+  outputLimit: 200,
+  topP: 0.9,
+};
+
+const defaultAgentBaseInfo: AgentBaseInfo = {
+  agentId: "unknown_agent",
+  agentName: "Unknown Agent",
 }
 
-const headerHeight = 56;
+const defaultAgentProfileConfig: AgentProfileConfig = {
+  systemMessage: "",
+  systemMessageLimit: 1000,
+};
+
+const defaultAgentConfig: AgentConfig = {
+  ...defaultModelConfig,
+  ...defaultAgentBaseInfo,
+  ...defaultAgentProfileConfig,
+};
 
 export default function Playground({
   logo,
@@ -85,23 +106,19 @@ export default function Playground({
   const [themeColor, setThemeColor] = useState(defaultColor);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
-  const { localParticipant } = useLocalParticipant();
-  const [prompt, setPrompt] = useState<string>("");
+  const [agentConfig, setAgentConfig] = useState<AgentConfig>(defaultAgentConfig);
 
-  const models: Model[] = useMemo(() => {
-    return [
-      {name: "GPT-4 (8K)", value: "gpt-4"},
-      {name: "GPT-4 Turbo (128K)", value: "gpt-4-turbo"},
-      {name: "GPT-3.5 (16K)", value: "gpt-3.5"},
-    ]
-  }, []);
+  const {localParticipant} = useLocalParticipant();
 
   const participants = useRemoteParticipants({
     updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
   });
   const agentParticipant = participants.find((p) => p.isAgent);
 
-  const { send: sendChat, chatMessages } = useChat();
+  const {send: sendChat, chatMessages} = useChat();
+
+  const {sendAgentConfig, agentConfigTopic} = useAgentConfig();
+
   const visualizerState = useMemo(() => {
     if (agentState === "thinking") {
       return "thinking";
@@ -132,13 +149,13 @@ export default function Playground({
   );
 
   const localTracks = tracks.filter(
-    ({ participant }) => participant instanceof LocalParticipant
+    ({participant}) => participant instanceof LocalParticipant
   );
   const localVideoTrack = localTracks.find(
-    ({ source }) => source === Track.Source.Camera
+    ({source}) => source === Track.Source.Camera
   );
   const localMicTrack = localTracks.find(
-    ({ source }) => source === Track.Source.Microphone
+    ({source}) => source === Track.Source.Microphone
   );
 
   const localMultibandVolume = useMultibandTrackVolume(
@@ -162,30 +179,54 @@ export default function Playground({
     }
   }, [agentParticipant, agentParticipant?.metadata]);
 
-  const isAgentConnected = agentState !== "offline";
+  const isAgentConnected = ["offline", "starting"].indexOf(agentState) === -1;
 
   const onDataReceived = useCallback(
     (msg: any) => {
-      if (msg.topic === "transcription") {
-        const decoded = JSON.parse(
-          new TextDecoder("utf-8").decode(msg.payload)
-        );
-        let timestamp = new Date().getTime();
-        if ("timestamp" in decoded && decoded.timestamp > 0) {
-          timestamp = decoded.timestamp;
-        }
-        setTranscripts([
-          ...transcripts,
-          {
-            name: "You",
-            message: decoded.text,
-            timestamp: timestamp,
-            isSelf: true,
-          },
-        ]);
+      switch (msg.topic) {
+        case "transcription":
+          const transDecoded = JSON.parse(
+            new TextDecoder("utf-8").decode(msg.payload)
+          );
+          let transTimestamp = new Date().getTime();
+          if ("timestamp" in transDecoded && transDecoded.timestamp > 0) {
+            transTimestamp = transDecoded.timestamp;
+          }
+          setTranscripts([
+            ...transcripts,
+            {
+              name: "You",
+              message: transDecoded.text,
+              timestamp: transTimestamp,
+              isSelf: true,
+            },
+          ]);
+          break;
+        case agentConfigTopic:
+          const acDecoded = JSON.parse(
+            new TextDecoder("utf-8").decode(msg.payload)
+          );
+          let acTimestamp = new Date().getTime();
+          if ("timestamp" in acDecoded && acDecoded.timestamp > 0) {
+            acTimestamp = acDecoded.timestamp;
+          }
+          const serverAgentConfig = JSON.parse(acDecoded.message)
+          console.log("current agent config: ", agentConfig);
+          setAgentConfig(prevConfig => ({...prevConfig, ...serverAgentConfig}));
+          setTranscripts([
+            ...transcripts,
+            {
+              name: "Configuration",
+              message: acDecoded.message,
+              timestamp: acTimestamp,
+              isSelf: false,
+            },
+          ]);
+          console.log("updated agent config: ", agentConfig);
+          break;
       }
     },
-    [transcripts]
+    [transcripts, agentConfigTopic, agentConfig]
   );
 
   // combine transcripts and chat together
@@ -228,7 +269,7 @@ export default function Playground({
           />
         ) : (
           <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center h-full w-full">
-            <LoadingSVG />
+            <LoadingSVG/>
             Waiting for video track
           </div>
         )}
@@ -253,7 +294,7 @@ export default function Playground({
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-gray-700 text-center w-full">
-            <LoadingSVG />
+            <LoadingSVG/>
             Waiting for audio track
           </div>
         )}
@@ -271,84 +312,29 @@ export default function Playground({
     );
   }, [messages, themeColor, sendChat]);
 
-  const promptTileContent = useMemo(() => {
+  const systemMessageTileContent = useMemo(() => {
     return (
-      <PromptTile
-        prompt={prompt}
+      <SystemMessageTile
+        disabled={!isAgentConnected}
+        agentConfig={agentConfig}
         accentColor={themeColor}
+        saveAgentConfig={sendAgentConfig}
       />
     );
-  }, [prompt, themeColor]);
+  }, [isAgentConnected, agentConfig, themeColor, sendAgentConfig]);
 
-  const modelConfigTileContent = useMemo(() => {
+  const agentConfigTileContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
-        <ConfigurationPanelItem title="Model Configuration">
-          <div className="flex flex-col pt-2 gap-4">
-            <NameValueRow
-              name="Model"
-              value={
-                <select className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}>
-                  {models.map((model, index) => (
-                    <option className={`min-w-20 max-w-40 text-center text-gray-100 bg-black border border-gray-800`} key={index} value={model.value}>
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
-              }
-              valueColor="gray-800"
-              valueSize="text-sm"
-            />
-            <NameValueRow
-              name="Temperature"
-              value={
-                <input
-                  className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  defaultValue="1"
-                />
-              }
-              valueColor="gray-800"
-              valueSize="text-sm"
-            />
-            <NameValueRow
-              name="Response max length"
-              value={
-                <input
-                  className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}
-                  type="number"
-                  min="1"
-                  max="4096"
-                  step="1"
-                  defaultValue="400"
-                />
-              }
-              valueColor="gray-800"
-              valueSize="text-sm"
-            />
-            <NameValueRow
-              name="Dialog round"
-              value={
-                <input
-                  className={`min-w-20 max-w-40 text-center bg-transparent border border-gray-800 text-gray-100 focus:outline-none focus:border-${themeColor}-700 focus:ring-1 focus:ring-${themeColor}-700`}
-                  type="number"
-                  min="1"
-                  max="30"
-                  step="1"
-                  defaultValue="5"
-                />
-              }
-              valueColor="gray-800"
-              valueSize="text-sm"
-            />
-          </div>
-        </ConfigurationPanelItem>
+        <AgentConfigTile
+          disabled={!isAgentConnected}
+          agentConfig={agentConfig}
+          themeColor={themeColor}
+          saveAgentConfig={sendAgentConfig}
+        />
       </div>
     );
-  }, [models, themeColor]);
+  }, [isAgentConnected, agentConfig, themeColor, sendAgentConfig]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -376,7 +362,7 @@ export default function Playground({
               name="Room connected"
               value={
                 roomState === ConnectionState.Connecting ? (
-                  <LoadingSVG diameter={16} strokeWidth={2} />
+                  <LoadingSVG diameter={16} strokeWidth={2}/>
                 ) : (
                   roomState
                 )
@@ -393,9 +379,35 @@ export default function Playground({
                 isAgentConnected ? (
                   "true"
                 ) : roomState === ConnectionState.Connected ? (
-                  <LoadingSVG diameter={12} strokeWidth={2} />
+                  <LoadingSVG diameter={12} strokeWidth={2}/>
                 ) : (
                   "false"
+                )
+              }
+              valueColor={isAgentConnected ? `${themeColor}-500` : "gray-500"}
+            />
+            <NameValueRow
+              name="Agent ID"
+              value={
+                isAgentConnected ? (
+                  agentConfig.agentId
+                ) : roomState === ConnectionState.Connected ? (
+                  <LoadingSVG diameter={12} strokeWidth={2}/>
+                ) : (
+                  "offline"
+                )
+              }
+              valueColor={isAgentConnected ? `${themeColor}-500` : "gray-500"}
+            />
+            <NameValueRow
+              name="Agent name"
+              value={
+                isAgentConnected ? (
+                  agentConfig.agentName
+                ) : roomState === ConnectionState.Connected ? (
+                  <LoadingSVG diameter={12} strokeWidth={2}/>
+                ) : (
+                  "offline"
                 )
               }
               valueColor={isAgentConnected ? `${themeColor}-500` : "gray-500"}
@@ -405,7 +417,7 @@ export default function Playground({
               value={
                 agentState !== "offline" && agentState !== "speaking" ? (
                   <div className="flex gap-2 items-center">
-                    <LoadingSVG diameter={12} strokeWidth={2} />
+                    <LoadingSVG diameter={12} strokeWidth={2}/>
                     {agentState}
                   </div>
                 ) : (
@@ -436,7 +448,7 @@ export default function Playground({
             title="Microphone"
             deviceSelectorKind="audioinput"
           >
-            <AudioInputTile frequencies={localMultibandVolume} />
+            <AudioInputTile frequencies={localMultibandVolume}/>
           </ConfigurationPanelItem>
         )}
         <div className="w-full">
@@ -453,13 +465,14 @@ export default function Playground({
         {showQR && (
           <div className="w-full">
             <ConfigurationPanelItem title="QR Code">
-              <QRCodeSVG value={window.location.href} width="128" />
+              <QRCodeSVG value={window.location.href} width="128"/>
             </ConfigurationPanelItem>
           </div>
         )}
       </div>
     );
   }, [
+    agentConfig,
     agentState,
     description,
     isAgentConnected,
@@ -474,6 +487,32 @@ export default function Playground({
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
+
+  mobileTabs.push({
+    title: "Configuration",
+    content: (
+      <PlaygroundTile
+        padding={false}
+        className="h-full w-full basis-1/4 items-start overflow-y-auto flex"
+        childrenClassName="h-full grow items-start"
+      >
+        {agentConfigTileContent}
+      </PlaygroundTile>
+    ),
+  });
+
+  mobileTabs.push({
+    title: "Profile & Prompt",
+    content: (
+      <PlaygroundTile
+        className="w-full h-full grow"
+        childrenClassName="justify-center"
+      >
+        {systemMessageTileContent}
+      </PlaygroundTile>
+    ),
+  });
+
   if (outputs?.includes(PlaygroundOutputs.Video)) {
     mobileTabs.push({
       title: "Video",
@@ -551,19 +590,19 @@ export default function Playground({
         <PlaygroundTile
           title="Configuration"
           padding={false}
-          className="h-full w-full basis-1/6 overflow-y-auto hidden max-w-[480px] lg:flex"
+          className="flex-col h-full w-full basis-1/6 overflow-y-auto hidden max-w-[480px] lg:flex"
           childrenClassName="h-full grow items-start"
         >
-          {modelConfigTileContent}
+          {agentConfigTileContent}
         </PlaygroundTile>
 
-        <div className="flex-col grow basis-1/3 gap-2 h-full hidden lg:flex">
+        <div className="flex-col w-full grow basis-1/3 gap-2 h-full hidden lg:flex">
           <PlaygroundTile
             title="Profile & Prompt"
             className="w-full h-full grow"
             childrenClassName="justify-center"
           >
-            {promptTileContent}
+            {systemMessageTileContent}
           </PlaygroundTile>
         </div>
 
@@ -599,7 +638,7 @@ export default function Playground({
           {outputs?.includes(PlaygroundOutputs.Chat) && (
             <PlaygroundTile
               title="Chat"
-              className="w-full h-full grow"
+              className="w-full h-full overflow-y-auto"
             >
               {chatTileContent}
             </PlaygroundTile>
