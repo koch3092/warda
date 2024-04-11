@@ -2,9 +2,10 @@
 **Warda** is a chatbot example project that includes two parts: **Agent** and **Playground**.
 
 **Agent** is built base on **[CAMEL-AI](https://www.camel-ai.org/)**, **Livekit [Server](https://livekit.io/)** & 
-**[Agents](https://livekit.io/product/agents)**, and **OpenAI TTS**.
+ - **[Agents](https://livekit.io/product/agents)**, and **OpenAI TTS**.
 
-**Playground** is based on **Livekit [agents-playground](https://github.com/livekit/agents-playground)** and can be used for debugging **Warda**.
+ - **Playground** is based on **Livekit [agents-playground](https://github.com/livekit/agents-playground)** and can be 
+ used for debugging **Warda**.
 
 <picture>
   <img style="width:100%;" alt="Warda Playground." src="https://raw.githubusercontent.com/koch3092/warda/main/.github/warda-playground.png">

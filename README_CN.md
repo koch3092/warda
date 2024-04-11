@@ -1,9 +1,10 @@
 # Warda
 **Warda**是一个聊天机器人示例项目，包含**Agent**和**Playground**两部分。
 
-**Agent**集成了[CAMEL-AI](https://www.camel-ai.org/)、Livekit [Server](https://livekit.io/) & [Agents](https://livekit.io/product/agents)、和OpenAI TTS等技术。
+ - **Agent**集成了[CAMEL-AI](https://www.camel-ai.org/)、Livekit [Server](https://livekit.io/) & [Agents](https://livekit.
+io/product/agents)、和OpenAI TTS等技术。
 
-**Playground**基于**Livekit [agents-playground](https://github.com/livekit/agents-playground)**，可以用于调试**Warda**。
+ - **Playground**基于**Livekit [agents-playground](https://github.com/livekit/agents-playground)**，可以用于调试**Warda**。
 
 <picture>
   <img style="width:100%;" alt="Warda Playground." src="https://raw.githubusercontent.com/koch3092/warda/main/.github/warda-playground.png">
