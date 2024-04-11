@@ -1,12 +1,13 @@
+import asyncio
 import json
 import logging
 from abc import ABC
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, List, Optional, Dict, Any, cast
+from typing import Literal, List, Optional, Dict, Any, cast, Generic, TypeVar
 
 from livekit import agents
-from livekit.rtc import Room, DataPacket, Participant, DataPacketKind, LocalParticipant
+from livekit.rtc import Room, DataPacket, Participant, LocalParticipant
 from pydantic import BaseModel
 
 from plugins.camel import SimpleAgent
@@ -14,11 +15,16 @@ from .service_topic import service_topic
 from core import EventEmitter
 from utils.utils import generate_random_base62
 
+T = TypeVar('T')
 
 _CHAT_TOPIC = "lk-chat-topic"
 _CHAT_UPDATE_TOPIC = "lk-chat-update-topic"
 
 EventTypes = Literal["service_received", "service_attached"]
+
+
+class TypedQueue(asyncio.Queue, Generic[T]):
+    pass
 
 
 class Service(ABC, EventEmitter[EventTypes]):

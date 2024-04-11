@@ -1,17 +1,8 @@
-import asyncio
 import logging
-from typing import Dict, Any, TypeVar, Generic, Optional
 
-from core.rtc.agent_config import AgentConfigMessage
 from .database import update_agent_config, get_agent_config
-from ..service import ServiceMessage, Service
-from .model import AgentConfigPayload, AgentConfigTable
-
-T = TypeVar('T')
-
-
-class TypedQueue(asyncio.Queue, Generic[T]):
-    pass
+from ..service import ServiceMessage, Service, TypedQueue
+from .model import AgentConfigPayload
 
 
 class AgentService(Service):

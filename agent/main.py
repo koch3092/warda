@@ -10,10 +10,9 @@ from livekit import rtc, agents
 from config import settings
 from plugins.camel import SimpleAgent
 from plugins.openai import TTS
-from plugins.postgrest import postgrest_client
 from services import AgentService
 from services.agent_config.database import get_agent_config
-from services.agent_config.model import AgentConfigTable, AgentConfigPayload
+from services.agent_config.model import AgentConfigPayload
 from services.service import ServiceManager
 
 PROMPT = "You are a helpful assistant.Your name is Warda."
