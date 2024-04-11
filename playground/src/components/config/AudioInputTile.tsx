@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { AgentMultibandAudioVisualizer } from "../visualization/AgentMultibandAudioVisualizer";
 
 type AudioInputTileProps = {

@@ -25,7 +25,7 @@ export const ChatMessage = ({
           isSelf ? "gray-300" : accentColor + "-500"
         } text-sm ${
           isSelf ? "" : "drop-shadow-" + accentColor
-        } whitespace-pre-line`}
+        } whitespace-pre-line break-all`}
       >
         {message}
       </div>
