@@ -12,7 +12,7 @@ type AgentConfigProps = {
   disabled: boolean;
   agentConfig: AgentConfig;
   themeColor: string;
-  saveAgentConfig?: (message: string) => void;
+  saveAgentConfig?: (agentConfig: AgentConfig) => void;
 }
 
 const models: Model[] = [
@@ -33,12 +33,11 @@ export const AgentConfigTile = ({disabled, agentConfig, themeColor, saveAgentCon
   };
 
   const handleBlur = (key: keyof AgentConfig) => {
-    const message = JSON.stringify({
+    saveAgentConfig?.({
       agentId: agentConfig.agentId,
       agentName: agentConfig.agentName,
       [key]: localAgentConfig[key]
     });
-    saveAgentConfig?.(message);
   };
 
   return (

@@ -6,7 +6,7 @@ type SystemMessageProps = {
   disabled: boolean;
   agentConfig: AgentConfig;
   accentColor: string;
-  saveAgentConfig?: (message: string) => void;
+  saveAgentConfig?: (agentConfig: AgentConfig) => void;
 };
 
 export const SystemMessageTile = ({ disabled, agentConfig, accentColor, saveAgentConfig }: SystemMessageProps) => {

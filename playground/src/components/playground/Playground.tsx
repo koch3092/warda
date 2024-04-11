@@ -106,7 +106,7 @@ export default function Playground({
   const [themeColor, setThemeColor] = useState(defaultColor);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
-  const [agentConfig, setAgentConfig] = useState<AgentConfig>(defaultAgentConfig);
+  const [localAgentConfig, setLocalAgentConfig] = useState<AgentConfig>(defaultAgentConfig);
 
   const {localParticipant} = useLocalParticipant();
 
@@ -117,7 +117,7 @@ export default function Playground({
 
   const {send: sendChat, chatMessages} = useChat();
 
-  const {sendAgentConfig, agentConfigTopic} = useAgentConfig();
+  const {sendAgentConfig, agentConfig, agentConfigServiceMessages} = useAgentConfig();
 
   const visualizerState = useMemo(() => {
     if (agentState === "thinking") {
@@ -179,54 +179,34 @@ export default function Playground({
     }
   }, [agentParticipant, agentParticipant?.metadata]);
 
+  useEffect(() => {
+    setLocalAgentConfig(agentConfig || defaultAgentConfig);
+  }, [agentConfig]);
+
   const isAgentConnected = ["offline", "starting"].indexOf(agentState) === -1;
 
   const onDataReceived = useCallback(
     (msg: any) => {
-      switch (msg.topic) {
-        case "transcription":
-          const transDecoded = JSON.parse(
-            new TextDecoder("utf-8").decode(msg.payload)
-          );
-          let transTimestamp = new Date().getTime();
-          if ("timestamp" in transDecoded && transDecoded.timestamp > 0) {
-            transTimestamp = transDecoded.timestamp;
-          }
-          setTranscripts([
-            ...transcripts,
-            {
-              name: "You",
-              message: transDecoded.text,
-              timestamp: transTimestamp,
-              isSelf: true,
-            },
-          ]);
-          break;
-        case agentConfigTopic:
-          const acDecoded = JSON.parse(
-            new TextDecoder("utf-8").decode(msg.payload)
-          );
-          let acTimestamp = new Date().getTime();
-          if ("timestamp" in acDecoded && acDecoded.timestamp > 0) {
-            acTimestamp = acDecoded.timestamp;
-          }
-          const serverAgentConfig = JSON.parse(acDecoded.message)
-          console.log("current agent config: ", agentConfig);
-          setAgentConfig(prevConfig => ({...prevConfig, ...serverAgentConfig}));
-          setTranscripts([
-            ...transcripts,
-            {
-              name: "Configuration",
-              message: acDecoded.message,
-              timestamp: acTimestamp,
-              isSelf: false,
-            },
-          ]);
-          console.log("updated agent config: ", agentConfig);
-          break;
+      if (msg.topic === "transcription") {
+        const transDecoded = JSON.parse(
+          new TextDecoder("utf-8").decode(msg.payload)
+        );
+        let transTimestamp = new Date().getTime();
+        if ("timestamp" in transDecoded && transDecoded.timestamp > 0) {
+          transTimestamp = transDecoded.timestamp;
+        }
+        setTranscripts([
+          ...transcripts,
+          {
+            name: "You",
+            message: transDecoded.text,
+            timestamp: transTimestamp,
+            isSelf: true,
+          },
+        ]);
       }
     },
-    [transcripts, agentConfigTopic, agentConfig]
+    [transcripts]
   );
 
   // combine transcripts and chat together
@@ -252,9 +232,19 @@ export default function Playground({
         isSelf: isSelf,
       });
     }
+
+    for (const msg of agentConfigServiceMessages) {
+      allMessages.push({
+        name: "Configuration",
+        message: msg.message,
+        timestamp: msg.timestamp,
+        isSelf: false,
+      });
+    }
+
     allMessages.sort((a, b) => a.timestamp - b.timestamp);
     setMessages(allMessages);
-  }, [transcripts, chatMessages, localParticipant, agentParticipant]);
+  }, [transcripts, chatMessages, agentConfigServiceMessages, localParticipant, agentParticipant]);
 
   useDataChannel(onDataReceived);
 
@@ -316,25 +306,25 @@ export default function Playground({
     return (
       <SystemMessageTile
         disabled={!isAgentConnected}
-        agentConfig={agentConfig}
+        agentConfig={localAgentConfig}
         accentColor={themeColor}
         saveAgentConfig={sendAgentConfig}
       />
     );
-  }, [isAgentConnected, agentConfig, themeColor, sendAgentConfig]);
+  }, [isAgentConnected, localAgentConfig, themeColor, sendAgentConfig]);
 
   const agentConfigTileContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
         <AgentConfigTile
           disabled={!isAgentConnected}
-          agentConfig={agentConfig}
+          agentConfig={localAgentConfig}
           themeColor={themeColor}
           saveAgentConfig={sendAgentConfig}
         />
       </div>
     );
-  }, [isAgentConnected, agentConfig, themeColor, sendAgentConfig]);
+  }, [isAgentConnected, localAgentConfig, themeColor, sendAgentConfig]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -390,7 +380,7 @@ export default function Playground({
               name="Agent ID"
               value={
                 isAgentConnected ? (
-                  agentConfig.agentId
+                  localAgentConfig.agentId
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2}/>
                 ) : (
@@ -403,7 +393,7 @@ export default function Playground({
               name="Agent name"
               value={
                 isAgentConnected ? (
-                  agentConfig.agentName
+                  localAgentConfig.agentName
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2}/>
                 ) : (
@@ -472,7 +462,7 @@ export default function Playground({
       </div>
     );
   }, [
-    agentConfig,
+    localAgentConfig,
     agentState,
     description,
     isAgentConnected,
@@ -628,7 +618,7 @@ export default function Playground({
           {outputs?.includes(PlaygroundOutputs.Audio) && (
             <PlaygroundTile
               title="Audio"
-              className="w-full grow min-h-40"
+              className="w-full grow min-h-52"
               childrenClassName="justify-center"
             >
               {audioTileContent}

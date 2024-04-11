@@ -53,7 +53,7 @@ export default function Home() {
 
   // set a new room name each time the user disconnects so that a new token gets fetched behind the scenes for a different room
   useEffect(() => {
-    if (shouldConnect === false) {
+    if (!shouldConnect) {
       setRoomName(createRoomName());
     }
   }, [shouldConnect]);
