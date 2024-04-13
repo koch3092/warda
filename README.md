@@ -1,11 +1,10 @@
 # Warda
 **Warda** is a chatbot example project that includes two parts: **Agent** and **Playground**.
 
-**Agent** is built base on **[CAMEL-AI](https://www.camel-ai.org/)**, **Livekit [Server](https://livekit.io/)** & 
- - **[Agents](https://livekit.io/product/agents)**, and **OpenAI TTS**.
+ - **Agent** is built base on [CAMEL-AI](https://www.camel-ai.org/), Livekit [Server](https://livekit.io/) & [Agents](https://livekit.io/product/agents), and OpenAI TTS.
 
- - **Playground** is based on **Livekit [agents-playground](https://github.com/livekit/agents-playground)** and can be 
- used for debugging **Warda**.
+ - **Playground** is based on Livekit [agents-playground](https://github.com/livekit/agents-playground) and can be 
+ used for debugging Warda.
 
 <picture>
   <img style="width:100%;" alt="Warda Playground." src="https://raw.githubusercontent.com/koch3092/warda/main/.github/warda-playground.png">
@@ -15,10 +14,26 @@
 ```bash
 git clone https://github.com/koch3092/warda.git
 ```
+
+## Running PostgREST
+**Working Directory**: `postgrest`
+
+Warda uses `PostgreSQL` for persistent data storage and provides an API interface through [PostgREST](https://postgrest.org/en/v12/).
+
+Use `docker compose` to run the `PostgREST` service:
+```bash
+docker compose up -d
+````
+
+The deployed `PostgREST` url is: `http://localhost:3030`.
+
+After deployment, you can access `swagger-ui` via `http://localhost:8080` to view the API interface.
+
+
 ## Running Agent
 **Working Directory**: `agent`
 
-The capabilities of **Agent** are based on [livekit/agents](https://github.com/livekit/agents). Below are some 
+The capabilities of Agent are based on [livekit/agents](https://github.com/livekit/agents). Below are some 
 **Concepts** from the official documentation, for more detailed instructions, refer to the official repository.
 
 >**Agent**: A function that defines the workflow of a programmable, server-side participant. This is your application code.
@@ -28,7 +43,7 @@ The capabilities of **Agent** are based on [livekit/agents](https://github.com/l
 >**Plugin**: A library class that performs a specific task, like speech-to-text, from a specific provider. An agent can compose multiple plugins together to perform more complex tasks.
 
 ### Install Dependencies
-**Warda** uses [Poetry](https://python-poetry.org/) for dependency management. Run the following command to install dependencies:
+Warda uses [Poetry](https://python-poetry.org/) for dependency management. Run the following command to install dependencies:
 ```bash
 poetry install
 ```
@@ -65,7 +80,7 @@ Running in Development Environment
 ```bash
 npm run dev
 ```
-Open `http://localhost:3000` in a browser to start debugging **Warda**.
+Open `http://localhost:3000` in a browser to start debugging Warda.
 
 ## Notes
 In **Playground**, make sure the **Agent** is already running before clicking the **Connect** button to enter the room.
