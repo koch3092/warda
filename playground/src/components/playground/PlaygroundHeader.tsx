@@ -2,6 +2,8 @@ import { Button } from "@/components/button/Button";
 import { ConnectionState } from "livekit-client";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 import { ReactNode } from "react";
+import Link from "next/link";
+import {useAuth, UserButton} from "@clerk/nextjs";
 
 type PlaygroundHeader = {
   logo?: ReactNode;
@@ -22,6 +24,8 @@ export const PlaygroundHeader = ({
   onConnectClicked,
   connectionState,
 }: PlaygroundHeader) => {
+  const { userId } = useAuth();
+
   return (
     <div
       className={`flex gap-4 pt-4 text-${accentColor}-500 justify-between items-center shrink-0`}
@@ -47,23 +51,48 @@ export const PlaygroundHeader = ({
             <GithubSVG />
           </a>
         )}
-        <Button
-          accentColor={
-            connectionState === ConnectionState.Connected ? "red" : accentColor
-          }
-          disabled={connectionState === ConnectionState.Connecting}
-          onClick={() => {
-            onConnectClicked();
-          }}
-        >
-          {connectionState === ConnectionState.Connecting ? (
-            <LoadingSVG />
-          ) : connectionState === ConnectionState.Connected ? (
-            "Disconnect"
+
+        {userId ? (
+          <div className="flex gap-4">
+            <Button
+              accentColor={
+                connectionState === ConnectionState.Connected ? "red" : accentColor
+              }
+              disabled={connectionState === ConnectionState.Connecting}
+              onClick={() => {
+                onConnectClicked();
+              }}
+            >
+              <span className="inline-block min-w-full w-16">
+                {connectionState === ConnectionState.Connecting ? (
+                  <LoadingSVG/>
+                ) : connectionState === ConnectionState.Connected ? (
+                  "Disconnect"
+                ) : (
+                  "Connect"
+                )}
+              </span>
+            </Button>
+            <UserButton afterSignOutUrl="/"/>
+          </div>
           ) : (
-            "Connect"
+          <div className="flex gap-4">
+            <Link href={"/sign-up"}>
+              <Button accentColor={accentColor}>
+                <span className="inline-block min-w-full w-16">
+                  Sign Up
+                </span>
+              </Button>
+            </Link>
+            <Link href={"/sign-in"}>
+              <Button accentColor={accentColor}>
+                <span className="inline-block min-w-full w-16">
+                  Sign In
+                </span>
+              </Button>
+            </Link>
+          </div>
           )}
-        </Button>
       </div>
     </div>
   );
