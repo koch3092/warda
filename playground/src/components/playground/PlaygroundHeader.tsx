@@ -53,7 +53,7 @@ export const PlaygroundHeader = ({
         )}
 
         {userId ? (
-          <div className="flex gap-4">
+          <div className="flex gap-4 px-4">
             <Button
               accentColor={
                 connectionState === ConnectionState.Connected ? "red" : accentColor
@@ -63,7 +63,7 @@ export const PlaygroundHeader = ({
                 onConnectClicked();
               }}
             >
-              <span className="inline-block min-w-full w-16">
+              <span className="flex justify-center items-center min-w-full w-20">
                 {connectionState === ConnectionState.Connecting ? (
                   <LoadingSVG/>
                 ) : connectionState === ConnectionState.Connected ? (

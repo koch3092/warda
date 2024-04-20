@@ -1,14 +1,15 @@
-import { generateRandomAlphanumeric } from "@/lib/util";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   StartAudio,
   useToken,
+  UserInfo,
+  UseTokenOptions,
 } from "@livekit/components-react";
+import { useUser } from "@clerk/nextjs";
 import { AnimatePresence, motion } from "framer-motion";
-import { Inter } from "next/font/google";
 import Head from "next/head";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground, {
@@ -29,13 +30,15 @@ const themeColors = [
   "teal",
 ];
 
-const inter = Inter({ subsets: ["latin"] });
+const noAuthText = "No Auth";
 
 export default function Home() {
   const [toastMessage, setToastMessage] = useState<{
     message: string;
     type: ToastType;
   } | null>(null);
+  const userSession = useUser();
+
   const [shouldConnect, setShouldConnect] = useState(false);
   const [liveKitUrl, setLiveKitUrl] = useState(
     process.env.NEXT_PUBLIC_LIVEKIT_URL
@@ -43,20 +46,28 @@ export default function Home() {
   const [customToken, setCustomToken] = useState<string>();
   const [metadata, setMetadata] = useState<PlaygroundMeta[]>([]);
 
-  const [roomName, setRoomName] = useState(createRoomName());
+  const [roomName, setRoomName] = useState("");
+  const [tokenOptions, setTokenOptions] = useState<UseTokenOptions>({});
 
-  const tokenOptions = useMemo(() => {
-    return {
-      userInfo: { identity: generateRandomAlphanumeric(16) },
-    };
-  }, []);
-
-  // set a new room name each time the user disconnects so that a new token gets fetched behind the scenes for a different room
   useEffect(() => {
-    if (!shouldConnect) {
-      setRoomName(createRoomName());
+    if (userSession.isSignedIn) {
+      if (userSession.user) {
+        const userInfo: UserInfo = {
+          name: userSession.user.username ?? undefined,
+          identity: userSession.user.id.split("_").reverse()[0],
+        };
+        if (userSession.user.fullName) {
+          userInfo.name = userSession.user.fullName;
+        }
+
+        setTokenOptions({ userInfo });
+        setRoomName(`${userInfo.name}'s room`);
+      }
+    } else {
+      setTokenOptions({});
+      setRoomName("");
     }
-  }, [shouldConnect]);
+  }, [userSession.isSignedIn, userSession.user]);
 
   useEffect(() => {
     const md: PlaygroundMeta[] = [];
@@ -66,9 +77,22 @@ export default function Home() {
     if (!customToken && tokenOptions.userInfo?.identity) {
       md.push({ name: "Room Name", value: roomName });
       md.push({
+        name: "Participant Name",
+        value: tokenOptions.userInfo.name ?? "Anonymous",
+      })
+
+      let identity = tokenOptions.userInfo.identity;
+      if (identity.length > 12) {
+        identity = "..." + identity.substring(identity.length - 12);
+      }
+      md.push({
         name: "Participant Identity",
-        value: tokenOptions.userInfo.identity,
+        value: identity,
       });
+    } else if (!tokenOptions.userInfo) {
+      md.push({ name: "Room Name", value: noAuthText });
+      md.push({ name: "Participant Name", value: noAuthText });
+      md.push({ name: "Participant Identity", value: noAuthText });
     }
     setMetadata(md);
   }, [liveKitUrl, roomName, tokenOptions, customToken]);
@@ -174,11 +198,5 @@ export default function Home() {
         )}
       </main>
     </>
-  );
-}
-
-function createRoomName() {
-  return [generateRandomAlphanumeric(4), generateRandomAlphanumeric(4)].join(
-    "-"
   );
 }
